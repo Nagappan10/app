@@ -1,0 +1,100 @@
+name: Build APK
+
+# Builds a sideloadable Android APK and attaches it to the run as a
+# downloadable artifact. GitHub's Ubuntu runners already carry the Android SDK,
+# NDK and build-tools, so nothing needs installing locally.
+#
+# Get the APK: Actions -> "Build APK" -> open the run -> Artifacts -> pulse-apk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # android/ is generated from app.json, not committed.
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      # The Gradle wrapper's default 10s connect timeout is not enough to fetch
+      # its distribution on these runners; the first build died here.
+      - name: Extend Gradle wrapper network timeout
+        working-directory: app/android/gradle/wrapper
+        run: |
+          grep -q '^networkTimeout=' gradle-wrapper.properties \
+            && sed -i 's/^networkTimeout=.*/networkTimeout=180000/' gradle-wrapper.properties \
+            || echo 'networkTimeout=180000' >> gradle-wrapper.properties
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('app/package-lock.json') }}
+          restore-keys: gradle-
+
+      # Only the wrapper is used. An earlier version fell back to the runner's
+      # own Gradle on failure, which ran a different version against the same
+      # build directory and buried the real error under an unrelated one.
+      # Output is not piped through `tail`, so aapt2/compiler errors survive.
+      - name: Build release APK
+        working-directory: app/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Verify the APK
+        working-directory: app/android
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          test -n "$APK" || { echo "::error::No APK produced"; exit 1; }
+          ls -lh "$APK"
+          # A valid APK is a zip carrying a manifest and compiled dex.
+          unzip -l "$APK" | grep -qE 'AndroidManifest\.xml' || { echo "::error::No manifest in APK"; exit 1; }
+          unzip -l "$APK" | grep -qE 'classes\.dex' || { echo "::error::No dex in APK"; exit 1; }
+          unzip -l "$APK" | grep -qE 'lib/arm64-v8a/.*\.so' || { echo "::error::No arm64 native libs"; exit 1; }
+          echo "APK verified: manifest, dex and arm64 native libraries all present."
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pulse-apk
+          path: app/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 90
