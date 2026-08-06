@@ -17,6 +17,9 @@ on:
       - 'app/**'
       - '.github/workflows/android.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Assemble release APK
@@ -108,3 +111,24 @@ jobs:
           path: app/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 90
+
+      # Artifacts require a GitHub login to download and expire after 90 days.
+      # A release asset is a permanent, direct, publicly downloadable link that
+      # can be opened straight from a phone browser — which is the actual goal.
+      # The APK is attached to a release rather than committed, because adding
+      # a 34 MB binary to git on every build would bloat the history forever.
+      - name: Publish the APK as a release asset
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: app/android/app/build/outputs/apk/release
+        run: |
+          TAG="v${{ github.run_number }}"
+          APK=$(ls *.apk | head -1)
+          mv "$APK" "pulse-$TAG.apk"
+          gh release create "$TAG" "pulse-$TAG.apk" \
+            --repo "${{ github.repository }}" \
+            --title "Pulse $TAG" \
+            --notes "Install: download pulse-$TAG.apk on your phone and open it. Built from ${{ github.sha }}." \
+            || gh release upload "$TAG" "pulse-$TAG.apk" --repo "${{ github.repository }}" --clobber
+          echo "Direct link: https://github.com/${{ github.repository }}/releases/download/$TAG/pulse-$TAG.apk"
