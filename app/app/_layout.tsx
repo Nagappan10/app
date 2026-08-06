@@ -12,6 +12,7 @@ import { useSyncTriggers } from '@/services/useSyncTriggers';
 import { ThemeProvider, useTheme } from '@/theme';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useStepsStore } from '@/store/useStepsStore';
+import { useSessionStore } from '@/store/useSessionStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -44,6 +45,10 @@ function AppShell() {
 
     (async () => {
       await getDb();
+      if (cancelled) return;
+      // Pick up a walk that was cut short by the process being killed, before
+      // anything else can observe an empty session.
+      await useSessionStore.getState().restore();
       if (cancelled) return;
       await initialise();
       if (cancelled) return;

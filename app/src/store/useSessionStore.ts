@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import { saveSession } from '@/db/walking';
 import { haptics } from '@/services/haptics';
 import { watchSteps } from '@/services/pedometer';
+import {
+  clearSessionNotification,
+  requestNotificationPermission,
+  showSessionNotification,
+} from '@/services/sessionNotification';
+import {
+  clearActiveSession,
+  elapsedFromSnapshot,
+  loadActiveSession,
+  saveActiveSession,
+} from '@/services/sessionPersistence';
 import type { WalkingSession } from '@/types';
 import { toDayKey } from '@/utils/date';
 import { caloriesBurned, distanceFromSteps, paceStepsPerMinute } from '@/utils/metrics';
@@ -24,6 +35,8 @@ interface SessionState {
   resume: () => void;
   stop: () => Promise<WalkingSession | null>;
   discard: () => void;
+  /** Re-attaches to a walk that was interrupted by the process being killed. */
+  restore: () => Promise<void>;
 
   /** Wired up by the live screen; supplies stride and weight for metrics. */
   configure: (config: { strideLength: number; weightKg: number }) => void;
@@ -54,6 +67,22 @@ let config = { strideLength: 0.762, weightKg: 70 };
 /** Rolling window of (timestamp, steps) samples used for the live cadence. */
 let paceSamples: { t: number; steps: number }[] = [];
 const PACE_WINDOW_MS = 20_000;
+
+/** Writes the current running totals so a process kill cannot erase the walk. */
+function persist(status: SessionStatus, startedAt: number) {
+  if (status === 'idle') return;
+  void saveActiveSession({
+    startedAt,
+    bankedSteps: status === 'active' ? bankedSteps : runningSteps(),
+    bankedMs: status === 'active' ? bankedMs : runningMs(status),
+    resumedAt: status === 'active' ? resumedAt : 0,
+    status,
+    savedAt: Date.now(),
+  });
+}
+
+/** The notification is refreshed on a slower cadence than the UI ticker. */
+let lastNotifiedAt = 0;
 
 function reset() {
   unsubscribe?.();
@@ -127,15 +156,38 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     ticker = setInterval(() => {
       const status = get().status;
       if (status === 'idle') return;
-      set({
-        steps: runningSteps(),
-        elapsedMs: runningMs(status),
-        currentPace: status === 'active' ? computeCurrentPace() : 0,
-      });
+
+      const steps = runningSteps();
+      const elapsedMs = runningMs(status);
+      set({ steps, elapsedMs, currentPace: status === 'active' ? computeCurrentPace() : 0 });
+
+      // Snapshot every tick: a crash then costs at most 250ms of progress.
+      persist(status, get().startedAt ?? now);
+
+      // The notification only needs to be legible, not frame-accurate — once
+      // every 5s keeps the shade current without thrashing the notification
+      // manager four times a second.
+      if (Date.now() - lastNotifiedAt >= 5000) {
+        lastNotifiedAt = Date.now();
+        void showSessionNotification({
+          steps,
+          elapsedMs,
+          distanceM: distanceFromSteps(steps, config.strideLength),
+          paused: status === 'paused',
+        });
+      }
     }, 250);
 
     haptics.impact();
     set({ status: 'active', startedAt: now, steps: 0, elapsedMs: 0, currentPace: 0 });
+
+    persist('active', now);
+    lastNotifiedAt = Date.now();
+    void requestNotificationPermission().then((granted) => {
+      if (granted) {
+        void showSessionNotification({ steps: 0, elapsedMs: 0, distanceM: 0, paused: false });
+      }
+    });
   },
 
   pause: () => {
@@ -148,6 +200,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     haptics.tap();
     set({ status: 'paused', steps: bankedSteps, elapsedMs: bankedMs, currentPace: 0 });
+
+    persist('paused', get().startedAt ?? Date.now());
+    lastNotifiedAt = Date.now();
+    void showSessionNotification({
+      steps: bankedSteps,
+      elapsedMs: bankedMs,
+      distanceM: distanceFromSteps(bankedSteps, config.strideLength),
+      paused: true,
+    });
   },
 
   resume: () => {
@@ -161,6 +222,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     haptics.tap();
     set({ status: 'active' });
+    persist('active', get().startedAt ?? Date.now());
   },
 
   stop: async () => {
@@ -173,6 +235,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     reset();
     set({ status: 'idle', startedAt: null, steps: 0, elapsedMs: 0, currentPace: 0 });
+    void clearActiveSession();
+    void clearSessionNotification();
 
     // A tap that produced nothing is not worth a history row.
     if (steps === 0 && durationMs < 3000) {
@@ -200,6 +264,74 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   discard: () => {
     reset();
     set({ status: 'idle', startedAt: null, steps: 0, elapsedMs: 0, currentPace: 0 });
+    void clearActiveSession();
+    void clearSessionNotification();
+  },
+
+  /**
+   * Picks a walk back up after the process was killed mid-session.
+   *
+   * Duration is restored from wall-clock — that time genuinely elapsed. Steps
+   * are restored only up to what had been banked before we died; the ones
+   * taken while the app was gone are unrecoverable, because Android's step
+   * counter is reported relative to when we subscribe and offers no history.
+   * Restoring the walk understates steps rather than inventing them.
+   */
+  restore: async () => {
+    if (get().status !== 'idle') return;
+
+    const snapshot = await loadActiveSession();
+    if (!snapshot) return;
+
+    reset();
+
+    bankedSteps = snapshot.bankedSteps;
+    bankedMs = elapsedFromSnapshot(snapshot);
+    resumedAt = 0;
+    paceSamples = [];
+
+    // Resume paused: the user decides whether to continue, and we never
+    // silently attribute a gap of unknown activity to the session.
+    unsubscribe = watchSteps((cumulative) => {
+      rawCumulative = cumulative;
+      if (get().status === 'active') {
+        paceSamples.push({ t: Date.now(), steps: runningSteps() });
+      }
+    });
+    rawAtResume = rawCumulative;
+
+    ticker = setInterval(() => {
+      const status = get().status;
+      if (status === 'idle') return;
+      const steps = runningSteps();
+      const elapsedMs = runningMs(status);
+      set({ steps, elapsedMs, currentPace: status === 'active' ? computeCurrentPace() : 0 });
+      persist(status, get().startedAt ?? snapshot.startedAt);
+      if (Date.now() - lastNotifiedAt >= 5000) {
+        lastNotifiedAt = Date.now();
+        void showSessionNotification({
+          steps,
+          elapsedMs,
+          distanceM: distanceFromSteps(steps, config.strideLength),
+          paused: status === 'paused',
+        });
+      }
+    }, 250);
+
+    set({
+      status: 'paused',
+      startedAt: snapshot.startedAt,
+      steps: bankedSteps,
+      elapsedMs: bankedMs,
+      currentPace: 0,
+    });
+
+    void showSessionNotification({
+      steps: bankedSteps,
+      elapsedMs: bankedMs,
+      distanceM: distanceFromSteps(bankedSteps, config.strideLength),
+      paused: true,
+    });
   },
 }));
 
