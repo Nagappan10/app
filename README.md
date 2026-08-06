@@ -31,6 +31,22 @@ The APK is signed with Expo's generated debug keystore. That is fine for
 sideloading onto your own device, but **not** valid for Play Store upload —
 that needs a real upload key.
 
+### Android — build in Expo's cloud (no Android toolchain needed)
+
+Easiest route if you don't want to install Android Studio. Expo's free tier
+builds the APK on their machines and gives you a download link.
+
+```bash
+npm install -g eas-cli
+cd app
+eas login          # a free Expo account
+eas build -p android --profile preview
+```
+
+The `preview` profile in `eas.json` is configured to emit an installable
+**APK** (not an app bundle). When it finishes, EAS prints a URL — open it on
+the phone and install.
+
 ### Android — build it yourself
 
 Requires Android Studio with the SDK **and NDK** installed:
