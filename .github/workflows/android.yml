@@ -28,12 +28,10 @@ concurrency:
 jobs:
   build:
     name: Assemble release APK
-    # Pinned rather than the rolling alias: two consecutive runs were cancelled
-    # after 15 minutes with no runner ever assigned (empty runner_name, zero
-    # steps), which is a queueing/capacity failure rather than a build error.
-    # An explicit image label can be served when the alias is constrained, and
-    # pinning also keeps the toolchain reproducible.
-    runs-on: ubuntu-24.04
+    # Back to the rolling alias. Pinning ubuntu-24.04 was a guess that did not
+    # help, and both builds that ever succeeded here ran on ubuntu-latest —
+    # so match the only configuration with evidence behind it.
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     defaults:
