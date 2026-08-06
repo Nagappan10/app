@@ -10,11 +10,20 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
+    # Without this filter every commit — including edits to other workflows —
+    # spawned an APK build, which then collided with any manually dispatched
+    # run. Only changes that can actually affect the APK should trigger one.
+    paths:
+      - 'app/**'
+      - '.github/workflows/android.yml'
 
+# Deliberately no `cancel-in-progress`. A build takes ~10 minutes, and
+# cancelling one the moment another is queued destroyed a run that was already
+# waiting for a runner — the cancellation timestamps matched to the second.
+# Letting queued builds finish costs nothing on a public repo.
 concurrency:
   group: apk-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
