@@ -1,0 +1,16 @@
+name: Runner smoke test
+
+# Diagnostic only. If a job this trivial cannot get a runner, the problem is
+# hosted-runner provisioning for the account, not the APK build.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/runner-smoke.yml']
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "Runner assigned. $(uname -a)"
