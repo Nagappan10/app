@@ -224,21 +224,22 @@ function SelectableIcon({
     scale.value = withSpring(selected ? 1 : 0, spring.bouncy);
   }, [scale, selected]);
 
+  // Colours are computed on the JS thread and passed in as plain values.
+  // `withAlpha` is an ordinary imported function, so calling it inside the
+  // worklet below would crash the UI thread ("tried to synchronously call a
+  // non-worklet function") — fatal in a release build. A worklet may only read
+  // shared values and call other worklets.
+  const borderColor = selected ? withAlpha(color, 0.6) : 'transparent';
+  const backgroundColor = selected ? withAlpha(color, 0.2) : withAlpha(palette.text, 0.06);
+
   const style = useAnimatedStyle(() => ({
-    borderColor: selected ? withAlpha(color, 0.6) : 'transparent',
     transform: [{ scale: 1 + scale.value * 0.04 }],
   }));
 
   return (
     <PressableScale onPress={onPress} haptic="select" accessibilityLabel={icon}>
       <Animated.View
-        style={[
-          styles.iconOption,
-          {
-            backgroundColor: selected ? withAlpha(color, 0.2) : withAlpha(palette.text, 0.06),
-          },
-          style,
-        ]}
+        style={[styles.iconOption, { backgroundColor, borderColor }, style]}
       >
         <Ionicons
           name={icon as never}

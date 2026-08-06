@@ -7,6 +7,7 @@ import { Screen } from '@/components/Screen';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { Divider, FadeInView, GhostButton, SectionHeader } from '@/components/common';
 import { isBackgroundTaskRegistered } from '@/services/background';
+import { SUPPORTS_HISTORY } from '@/services/pedometer';
 import { lastSyncedAt, pendingCount, resetWatermark, runSync } from '@/services/sync';
 import { usePracticeStore } from '@/store/usePracticeStore';
 import { useSettingsStore, type ThemePreference } from '@/store/useSettingsStore';
@@ -201,8 +202,25 @@ export default function SettingsScreen() {
         </GlassCard>
       </FadeInView>
 
-      {/* ------------------------------- sync ----------------------------- */}
+      {/* --------------------------- step accuracy ------------------------ */}
       <FadeInView index={3}>
+        <SectionHeader title="Step tracking" />
+        <GlassCard>
+          <View style={styles.field}>
+            <Text style={[type.subhead, { color: palette.text, fontWeight: '600' }]}>
+              {SUPPORTS_HISTORY ? 'Full-day accuracy' : 'Counted while Pulse runs'}
+            </Text>
+            <Text style={[type.caption, { color: palette.textSecondary }]}>
+              {SUPPORTS_HISTORY
+                ? 'Steps come from the motion coprocessor, which keeps a rolling history. Pulse reads the true daily total on every launch, so steps taken while the app was closed are always included.'
+                : 'Steps come from the hardware step counter, which is accurate while Pulse is open or in the background. Android exposes no step history API, so if the app is fully closed by the system, steps from that period cannot be recovered.'}
+            </Text>
+          </View>
+        </GlassCard>
+      </FadeInView>
+
+      {/* ------------------------------- sync ----------------------------- */}
+      <FadeInView index={4}>
         <SectionHeader title="Cloud sync" />
         <GlassCard>
           <View style={styles.switchRow}>
@@ -285,7 +303,7 @@ export default function SettingsScreen() {
         </GlassCard>
       </FadeInView>
 
-      <FadeInView index={4}>
+      <FadeInView index={5}>
         <Text style={[type.caption, styles.footer, { color: palette.textTertiary }]}>
           Pulse · steps read from the device’s hardware pedometer · data stored
           locally in SQLite

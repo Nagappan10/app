@@ -45,6 +45,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Catches Reanimated worklets calling non-worklet imports. That class of
+      # bug is invisible in a debug build and fatal in a release one — it is
+      # what crashed the first APK on the activity editor.
+      - name: Check worklet safety
+        run: npm run check:worklets
+
       - name: Typecheck
         run: npm run typecheck
 

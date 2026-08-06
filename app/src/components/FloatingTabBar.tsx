@@ -25,6 +25,7 @@ import {
   withAlpha,
 } from '@/theme';
 import { spring, timing } from '@/theme/motion';
+import { USE_REAL_BLUR } from '@/theme/perf';
 
 /** Icon + accent per route, keyed by the file name under app/(tabs). */
 const TAB_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string; accent: 'walk' | 'practice' }> = {
@@ -81,8 +82,21 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
     >
       <View style={[styles.pill, shadow(palette, 'xl')]}>
         <View style={styles.clip}>
-          <BlurView intensity={70} tint={palette.blurTint} style={StyleSheet.absoluteFill} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.glassStrong }]} />
+          {USE_REAL_BLUR ? (
+            <BlurView intensity={70} tint={palette.blurTint} style={StyleSheet.absoluteFill} />
+          ) : null}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                // The bar floats over scrolling content, so on Android it needs
+                // to be near-opaque rather than merely translucent.
+                backgroundColor: USE_REAL_BLUR
+                  ? palette.glassStrong
+                  : withAlpha(palette.backgroundElevated, 0.97),
+              },
+            ]}
+          />
 
           {/* Lit top edge, same language as GlassCard. */}
           <View

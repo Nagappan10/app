@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PullIndicator, PULL_THRESHOLD } from './PullIndicator';
+import { USE_REAL_BLUR } from '@/theme/perf';
 import { haptics } from '@/services/haptics';
 import {
   SCROLL_BOTTOM_PAD,
@@ -134,11 +135,19 @@ export function Screen({
           compactBarStyle,
         ]}
       >
-        <BlurView intensity={60} tint={palette.blurTint} style={StyleSheet.absoluteFill} />
+        {/* Android substitutes an opaque bar: without a real backdrop blur a
+            translucent one would let content scroll visibly behind the title. */}
+        {USE_REAL_BLUR ? (
+          <BlurView intensity={60} tint={palette.blurTint} style={StyleSheet.absoluteFill} />
+        ) : null}
         <View
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: palette.glass, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.separator },
+            {
+              backgroundColor: USE_REAL_BLUR ? palette.glass : palette.background,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: palette.separator,
+            },
           ]}
         />
         <Animated.Text

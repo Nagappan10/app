@@ -150,7 +150,14 @@ export const useStepsStore = create<StepsState>((set, get) => ({
     }
 
     // Android: accumulate deltas from the live subscription.
-    let previous = 0;
+    //
+    // expo-sensors reports `values[0] - stepsAtTheBeginning`, where the
+    // baseline is captured on the first sensor event and deliberately offset by
+    // one — so the very first callback always reports 1, never 0. Using `null`
+    // rather than `0` as the "no baseline yet" marker keeps that first real
+    // step from being silently swallowed, and stays correct even if the
+    // platform ever starts reporting a genuine 0.
+    let previous: number | null = null;
     let pending = 0;
     let flushing = false;
 
@@ -182,13 +189,19 @@ export const useStepsStore = create<StepsState>((set, get) => ({
     };
 
     const stopWatching = watchSteps((cumulative) => {
-      // The first callback establishes the baseline; only deltas count.
-      if (previous === 0) {
+      if (previous === null) {
+        // First event. Its value is the platform's +1 offset, which represents
+        // a real step, so bank it rather than discarding it as a baseline.
         previous = cumulative;
+        if (cumulative > 0) pending += cumulative;
         return;
       }
+
       const delta = cumulative - previous;
       previous = cumulative;
+
+      // A negative delta means the counter re-based (process restart or device
+      // reboot). Re-baseline instead of subtracting from the day's total.
       if (delta > 0) pending += delta;
     });
 
