@@ -17,14 +17,6 @@ on:
       - 'app/**'
       - '.github/workflows/android.yml'
 
-# Deliberately no `cancel-in-progress`. A build takes ~10 minutes, and
-# cancelling one the moment another is queued destroyed a run that was already
-# waiting for a runner — the cancellation timestamps matched to the second.
-# Letting queued builds finish costs nothing on a public repo.
-concurrency:
-  group: apk-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   build:
     name: Assemble release APK
