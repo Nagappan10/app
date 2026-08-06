@@ -1,24 +1,40 @@
 /**
- * Colour system.
+ * Colour system — "warm metal".
  *
- * Dark is the primary theme: a near-black #0A0A0C ground that lets the mesh
- * gradient blobs bloom underneath the frosted layers. Light mode is a real
- * theme, not an inversion — glass over white needs *more* opacity and *less*
- * border contrast to avoid looking like grey plastic.
+ * Deliberately not the cyan/violet palette every fitness app ships. The ground
+ * is a warm near-black (a trace of red and yellow rather than the usual blue
+ * cast), which makes the two accents read as materials rather than as UI
+ * colours: aged copper for walking, oxidised jade for practice. Warm metal is
+ * also what makes the skeuomorphic bevels convincing — a bevel catching light
+ * needs a surface that could plausibly be metal or stone.
+ *
+ * The bevel tokens below are the whole basis of the tactile look: every raised
+ * surface gets a light hairline along its top edge and a dark one along its
+ * bottom, which is how physical relief reads. Pressed states swap them.
  */
 
 export interface Palette {
   scheme: 'dark' | 'light';
 
-  /** Page background, behind everything including the mesh. */
   background: string;
-  /** Slightly raised ground for grouped sections. */
   backgroundElevated: string;
 
-  /** Fill applied on top of the blur inside a glass card. */
+  /** Body fill of a raised surface. */
+  surface: string;
+  surfaceRaised: string;
+  /** Recessed wells: inputs, tracks, unfilled cells. */
+  surfaceSunken: string;
+
+  /** Top bevel — the lit edge of a raised surface. */
+  bevelLight: string;
+  /** Bottom bevel — the shaded edge. */
+  bevelDark: string;
+  /** Hairline that holds a shape without a harsh outline. */
+  border: string;
+
+  /** Legacy glass tokens, retained so existing components keep compiling. */
   glass: string;
   glassStrong: string;
-  /** 1px top highlight that gives glass its lit edge. */
   glassHighlight: string;
   glassBorder: string;
 
@@ -28,7 +44,6 @@ export interface Palette {
 
   separator: string;
 
-  /** Section accents. */
   walkFrom: string;
   walkTo: string;
   practiceFrom: string;
@@ -39,43 +54,51 @@ export interface Palette {
   warning: string;
   flame: string;
 
-  /** Mesh gradient blob colours, drawn at low opacity behind the blur. */
+  /** Ambient background wash. */
   mesh: [string, string, string];
 
-  /** Tint passed to BlurView. */
   blurTint: 'dark' | 'light';
-  /** Shadow colour — pure black in dark, a soft navy in light. */
   shadow: string;
 }
 
 export const darkPalette: Palette = {
   scheme: 'dark',
 
-  background: '#0A0A0C',
-  backgroundElevated: '#121216',
+  background: '#131110',
+  backgroundElevated: '#1C1917',
 
-  glass: 'rgba(255,255,255,0.06)',
-  glassStrong: 'rgba(255,255,255,0.10)',
-  glassHighlight: 'rgba(255,255,255,0.18)',
-  glassBorder: 'rgba(255,255,255,0.08)',
+  surface: 'rgba(255,247,237,0.055)',
+  surfaceRaised: 'rgba(255,247,237,0.085)',
+  surfaceSunken: 'rgba(0,0,0,0.28)',
 
-  text: '#FFFFFF',
-  textSecondary: 'rgba(235,235,245,0.62)',
-  textTertiary: 'rgba(235,235,245,0.35)',
+  bevelLight: 'rgba(255,240,220,0.16)',
+  bevelDark: 'rgba(0,0,0,0.55)',
+  border: 'rgba(255,240,220,0.09)',
 
-  separator: 'rgba(255,255,255,0.08)',
+  glass: 'rgba(255,247,237,0.055)',
+  glassStrong: 'rgba(255,247,237,0.09)',
+  glassHighlight: 'rgba(255,240,220,0.16)',
+  glassBorder: 'rgba(255,240,220,0.09)',
 
-  walkFrom: '#22D3EE',
-  walkTo: '#3B82F6',
-  practiceFrom: '#A855F7',
-  practiceTo: '#EC4899',
+  text: '#F7F2EA',
+  textSecondary: 'rgba(247,242,234,0.62)',
+  textTertiary: 'rgba(247,242,234,0.34)',
 
-  success: '#30D158',
-  danger: '#FF453A',
-  warning: '#FFD60A',
-  flame: '#FF9F0A',
+  separator: 'rgba(255,240,220,0.08)',
 
-  mesh: ['#1E5F8C', '#5B2A86', '#0E7490'],
+  // Copper — walking.
+  walkFrom: '#F0B357',
+  walkTo: '#C4632E',
+  // Jade — practice.
+  practiceFrom: '#5CC4AA',
+  practiceTo: '#2C7F6D',
+
+  success: '#5FBF87',
+  danger: '#E2594C',
+  warning: '#E9A23B',
+  flame: '#E07A3F',
+
+  mesh: ['#7A3F1E', '#1F5C50', '#3C2A16'],
 
   blurTint: 'dark',
   shadow: '#000000',
@@ -84,34 +107,42 @@ export const darkPalette: Palette = {
 export const lightPalette: Palette = {
   scheme: 'light',
 
-  background: '#F2F2F7',
-  backgroundElevated: '#FFFFFF',
+  background: '#F2EBE0',
+  backgroundElevated: '#FDFAF5',
 
-  glass: 'rgba(255,255,255,0.55)',
-  glassStrong: 'rgba(255,255,255,0.72)',
-  glassHighlight: 'rgba(255,255,255,0.90)',
-  glassBorder: 'rgba(0,0,0,0.06)',
+  surface: 'rgba(255,255,255,0.78)',
+  surfaceRaised: 'rgba(255,255,255,0.95)',
+  surfaceSunken: 'rgba(90,70,50,0.08)',
 
-  text: '#000000',
-  textSecondary: 'rgba(60,60,67,0.62)',
-  textTertiary: 'rgba(60,60,67,0.32)',
+  bevelLight: 'rgba(255,255,255,0.95)',
+  bevelDark: 'rgba(90,66,40,0.16)',
+  border: 'rgba(90,66,40,0.14)',
 
-  separator: 'rgba(60,60,67,0.12)',
+  glass: 'rgba(255,255,255,0.78)',
+  glassStrong: 'rgba(255,255,255,0.95)',
+  glassHighlight: 'rgba(255,255,255,0.95)',
+  glassBorder: 'rgba(90,66,40,0.14)',
 
-  walkFrom: '#06B6D4',
-  walkTo: '#2563EB',
-  practiceFrom: '#8B5CF6',
-  practiceTo: '#DB2777',
+  text: '#1B1611',
+  textSecondary: 'rgba(27,22,17,0.62)',
+  textTertiary: 'rgba(27,22,17,0.36)',
 
-  success: '#34C759',
-  danger: '#FF3B30',
-  warning: '#FF9500',
-  flame: '#FF9500',
+  separator: 'rgba(90,66,40,0.14)',
 
-  mesh: ['#7DD3FC', '#C4B5FD', '#67E8F9'],
+  walkFrom: '#D98A2B',
+  walkTo: '#A84E22',
+  practiceFrom: '#3FA890',
+  practiceTo: '#226B5A',
+
+  success: '#2E9E5B',
+  danger: '#C8412F',
+  warning: '#C97F1E',
+  flame: '#C4622C',
+
+  mesh: ['#E8C9A0', '#A8D6C9', '#EBD9BE'],
 
   blurTint: 'light',
-  shadow: '#1E293B',
+  shadow: '#4A3520',
 };
 
 export type AccentKey = 'walk' | 'practice';
@@ -124,6 +155,7 @@ export function accentGradient(palette: Palette, accent: AccentKey): [string, st
 
 /** Adds an alpha channel to a `#RRGGBB` string. */
 export function withAlpha(hex: string, alpha: number): string {
+  if (hex.startsWith('rgba')) return hex;
   const clean = hex.replace('#', '');
   const full =
     clean.length === 3
@@ -140,14 +172,14 @@ export function withAlpha(hex: string, alpha: number): string {
 
 /** Preset swatches offered when creating a practice activity. */
 export const ACTIVITY_COLORS = [
-  '#A855F7',
-  '#EC4899',
-  '#F43F5E',
-  '#FB923C',
-  '#FACC15',
-  '#4ADE80',
-  '#22D3EE',
-  '#3B82F6',
-  '#818CF8',
-  '#F472B6',
+  '#5CC4AA',
+  '#F0B357',
+  '#C4632E',
+  '#D97757',
+  '#E0B44A',
+  '#7FB069',
+  '#4A9CB5',
+  '#8C7AE6',
+  '#D96A9A',
+  '#A8886B',
 ] as const;

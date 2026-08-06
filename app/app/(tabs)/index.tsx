@@ -104,6 +104,7 @@ export default function WalkScreen() {
                   style={type.hero}
                   config={spring.gentle}
                   color={palette.text}
+                  animate
                 />
                 {live ? (
                   <Text style={[type.mono, styles.timer, { color: palette.textSecondary }]}>

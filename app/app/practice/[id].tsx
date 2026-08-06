@@ -134,6 +134,7 @@ export default function ActivityDetailScreen() {
                   decimals={minutesToday % 1 === 0 && !isTimingThis ? 0 : 1}
                   style={type.title2}
                   color={palette.text}
+                  animate={isTimingThis}
                 />
                 <Text style={[type.caption, { color: palette.textTertiary }]}>
                   of {activity.targetMinutes}m

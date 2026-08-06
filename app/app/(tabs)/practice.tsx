@@ -74,6 +74,7 @@ export default function PracticeScreen() {
                 suffix="m"
                 style={type.title2}
                 color={timedActivity.color}
+                animate
               />
               <PressableScale
                 onPress={() => void stopTimer()}

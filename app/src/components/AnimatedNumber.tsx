@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, TextInput, type StyleProp, type TextStyle } from 'react-native';
+import { StyleSheet, Text, TextInput, type StyleProp, type TextStyle } from 'react-native';
 import Animated, {
   useAnimatedProps,
   useSharedValue,
@@ -16,7 +16,7 @@ const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
  *
  * `Number.prototype.toLocaleString` is not available on the UI thread, so
  * thousands separators are inserted by hand. Doing this in a worklet is what
- * lets the counter update per-frame without a JS round trip.
+ * lets an animated counter update per-frame without a JS round trip.
  */
 function formatWorklet(value: number, decimals: number, separator: boolean): string {
   'worklet';
@@ -37,26 +37,39 @@ function formatWorklet(value: number, decimals: number, separator: boolean): str
   return fracPart ? `${sign}${withSeparators}.${fracPart}` : `${sign}${withSeparators}`;
 }
 
+/** Same output as the worklet, for the plain-text path. */
+function formatPlain(value: number, decimals: number, separator: boolean): string {
+  const fixed = Math.abs(value).toFixed(decimals);
+  const [intPart = '0', fracPart] = fixed.split('.');
+  const grouped = separator ? intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : intPart;
+  const sign = value < 0 ? '-' : '';
+  return fracPart ? `${sign}${grouped}.${fracPart}` : `${sign}${grouped}`;
+}
+
 export interface AnimatedNumberProps {
   value: number;
   style?: StyleProp<TextStyle>;
   decimals?: number;
-  /** Insert thousands separators. Off for values that are never large. */
   separator?: boolean;
   prefix?: string;
   suffix?: string;
   config?: WithSpringConfig;
   color?: string;
+  /**
+   * Spring the value on every change. Off by default.
+   *
+   * The animated path renders an uneditable `TextInput`, because only its
+   * `text` prop can be driven from `useAnimatedProps` without a React render
+   * per frame. That is the right trade for a counter that ticks several times
+   * a second — and the wrong one everywhere else: `TextInput` is a heavyweight
+   * native view (input connection, IME hooks, spans), and an earlier build
+   * mounted three dozen of them purely to display static stat values, which
+   * cost real frames while scrolling. Static numbers now render as plain
+   * `Text`, and only genuinely live figures opt in.
+   */
+  animate?: boolean;
 }
 
-/**
- * A number that springs to its new value instead of snapping.
- *
- * Implemented as an uneditable `TextInput` because its `text` prop can be
- * driven from `useAnimatedProps` — a `<Text>` child would require a JS render
- * per frame. The value lives in a shared value and is formatted inside a
- * worklet, so the whole count-up runs on the UI thread at display refresh rate.
- */
 export function AnimatedNumber({
   value,
   style,
@@ -66,33 +79,86 @@ export function AnimatedNumber({
   suffix = '',
   config = spring.gentle,
   color,
+  animate = false,
 }: AnimatedNumberProps) {
   const palette = usePalette();
+  const resolved = color ?? palette.text;
+
+  if (!animate) {
+    return (
+      <Text style={[styles.text, { color: resolved }, style]} numberOfLines={1}>
+        {`${prefix}${formatPlain(value, decimals, separator)}${suffix}`}
+      </Text>
+    );
+  }
+
+  return (
+    <SpringNumber
+      value={value}
+      style={style}
+      decimals={decimals}
+      separator={separator}
+      prefix={prefix}
+      suffix={suffix}
+      config={config}
+      color={resolved}
+    />
+  );
+}
+
+/**
+ * Split into its own component so the hooks below only ever run on the
+ * animated path — calling them conditionally in `AnimatedNumber` would break
+ * the rules of hooks.
+ */
+interface SpringNumberProps {
+  value: number;
+  style?: StyleProp<TextStyle>;
+  decimals: number;
+  separator: boolean;
+  prefix: string;
+  suffix: string;
+  config: WithSpringConfig;
+  color: string;
+}
+
+function SpringNumber({
+  value,
+  style,
+  decimals,
+  separator,
+  prefix,
+  suffix,
+  config,
+  color,
+}: SpringNumberProps) {
   const animated = useSharedValue(value);
 
   useEffect(() => {
     animated.value = withSpring(value, config);
   }, [animated, value, config]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    text: `${prefix}${formatWorklet(animated.value, decimals, separator)}${suffix}`,
-    defaultValue: `${prefix}${formatWorklet(animated.value, decimals, separator)}${suffix}`,
-  }));
+  const animatedProps = useAnimatedProps(() => {
+    const text = `${prefix}${formatWorklet(animated.value, decimals, separator)}${suffix}`;
+    return { text, defaultValue: text };
+  });
 
   return (
     <AnimatedTextInput
       editable={false}
-      // The value is presentational; expose it to screen readers as text.
       accessibilityRole="text"
       accessibilityLabel={`${prefix}${value.toFixed(decimals)}${suffix}`}
       underlineColorAndroid="transparent"
-      style={[styles.input, { color: color ?? palette.text }, style]}
+      style={[styles.input, { color }, style]}
       animatedProps={animatedProps}
     />
   );
 }
 
 const styles = StyleSheet.create({
+  text: {
+    includeFontPadding: false,
+  },
   input: {
     padding: 0,
     margin: 0,

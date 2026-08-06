@@ -34,10 +34,16 @@ export const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
  */
 export function shadow(palette: Palette, level: 'sm' | 'md' | 'lg' | 'xl'): ViewStyle {
   const isDark = palette.scheme === 'dark';
-  const opacity = { sm: 0.18, md: 0.26, lg: 0.34, xl: 0.45 }[level];
-  const radiusFor = { sm: 8, md: 18, lg: 30, xl: 44 }[level];
-  const offset = { sm: 2, md: 6, lg: 12, xl: 20 }[level];
-  const elevation = { sm: 2, md: 6, lg: 12, xl: 20 }[level];
+  const opacity = { sm: 0.16, md: 0.22, lg: 0.28, xl: 0.36 }[level];
+  const radiusFor = { sm: 6, md: 12, lg: 20, xl: 28 }[level];
+  const offset = { sm: 1, md: 3, lg: 6, xl: 10 }[level];
+
+  // Android renders `elevation` as a real-time shadow pass, and does it per
+  // view. On a rounded, clipped surface that pass is expensive, and with
+  // dozens of cards on screen it was a measurable share of the frame budget.
+  // Depth here comes from the bevel hairlines instead, so elevation only needs
+  // to separate a surface from its neighbour — small values are plenty.
+  const elevation = { sm: 0, md: 1, lg: 3, xl: 6 }[level];
 
   return {
     shadowColor: palette.shadow,

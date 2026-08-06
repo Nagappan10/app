@@ -1,33 +1,34 @@
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { memo, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { radius as radii, shadow, spacing, usePalette, withAlpha } from '@/theme';
-import { FILL_BOOST, USE_REAL_BLUR } from '@/theme/perf';
 
 /**
- * The frosted surface the entire app is built from.
+ * The raised surface the whole app is built from.
  *
- * Real glass is not one layer, and neither is this. Bottom to top:
+ * Skeuomorphic where it counts, minimal everywhere else. Depth comes from how
+ * light actually falls on a raised object rather than from ornament:
  *
- *   1. backdrop blur (iOS)      refracts the animated mesh behind it
- *   2. translucent fill         gives the glass body and colour
- *   3. inner glow gradient      fades top-to-bottom, reads as a lit surface
- *   4. 1px top highlight        rgba(255,255,255,0.18) — the lit leading edge
+ *   1. a very slight vertical gradient — the sheen across a physical face
+ *   2. a 1px light hairline along the TOP edge — the lit bevel
+ *   3. a 1px dark hairline along the BOTTOM edge — the shaded underside
+ *   4. a hairline border holding the silhouette
  *
- * plus a hairline border on the clipping container and layered shadows beneath.
- * The top highlight is the single detail that most sells the effect: it is what
- * a real bevel catching light looks like, and it is the first thing missing
- * from flat imitations.
+ * Those two opposing hairlines are the entire trick. Relief reads as relief
+ * because the eye expects light from above, so a bright top edge and a dark
+ * bottom edge is enough — no drop shadows, no blur, no bevel textures.
  *
- * Performance: this component renders many times per screen, so the layer count
- * is kept deliberately tight — the border lives on the clip view rather than in
- * its own absolute overlay, and the blur pass is skipped on Android where it
- * would cost a composite without producing an actual blur (see theme/perf).
- * The whole thing is memoised because most cards never change between renders,
- * yet sit inside screens that re-render several times a second during a
- * live session.
+ * It is also dramatically cheaper than the frosted-glass version this replaces.
+ * That build mounted a BlurView per card plus several full-bleed overlays;
+ * with dozens of cards on a screen, Android spent its frame budget compositing
+ * blur passes that it was not even rendering as blur. Here a card is a handful
+ * of plain views and one small gradient, so the same visual weight costs a
+ * fraction of the work — which is why the redesign and the smoothness fix are
+ * the same change.
+ *
+ * The component keeps its original name and props so every existing caller
+ * compiles untouched.
  */
 
 export type GlassIntensity = 'light' | 'regular' | 'strong';
@@ -40,17 +41,12 @@ export interface GlassCardProps {
   borderRadius?: number;
   intensity?: GlassIntensity;
   elevation?: 'sm' | 'md' | 'lg' | 'xl';
-  /** Tints the whole card toward an accent — used for active/selected states. */
+  /** Tints the whole surface toward an accent — used for active states. */
   tint?: string;
-  /** Animated wrapper, so callers can drive entrance/press without re-nesting. */
   animatedStyle?: StyleProp<ViewStyle>;
+  /** Recessed rather than raised: bevels invert, as for a well or a track. */
+  sunken?: boolean;
 }
-
-const BLUR_INTENSITY: Record<GlassIntensity, number> = {
-  light: 24,
-  regular: 42,
-  strong: 68,
-};
 
 function GlassCardInner({
   children,
@@ -61,15 +57,22 @@ function GlassCardInner({
   elevation = 'md',
   tint,
   animatedStyle,
+  sunken = false,
 }: GlassCardProps) {
   const palette = usePalette();
   const isDark = palette.scheme === 'dark';
 
-  const baseFill = intensity === 'strong' ? palette.glassStrong : palette.glass;
-  // Without a blur pass the fill has to carry the surface on its own.
-  const fill = USE_REAL_BLUR
-    ? baseFill
-    : withAlpha(isDark ? '#FFFFFF' : '#FFFFFF', (intensity === 'strong' ? 0.12 : 0.08) + FILL_BOOST);
+  const fill =
+    intensity === 'strong'
+      ? palette.surfaceRaised
+      : intensity === 'light'
+        ? palette.surface
+        : palette.surface;
+
+  // Sunken surfaces are lit from the opposite side: dark along the top lip,
+  // light along the bottom, which is what a recess looks like.
+  const topBevel = sunken ? palette.bevelDark : palette.bevelLight;
+  const bottomBevel = sunken ? palette.bevelLight : palette.bevelDark;
 
   return (
     <Animated.View style={[shadow(palette, elevation), { borderRadius }, animatedStyle, style]}>
@@ -79,51 +82,40 @@ function GlassCardInner({
           {
             borderRadius,
             borderWidth: StyleSheet.hairlineWidth,
-            borderColor: palette.glassBorder,
-            // Android has no blur behind the fill, so the card needs an opaque
-            // base or the mesh shows straight through at full strength.
-            backgroundColor: USE_REAL_BLUR ? 'transparent' : withAlpha(palette.background, 0.55),
+            borderColor: palette.border,
+            backgroundColor: sunken ? palette.surfaceSunken : palette.backgroundElevated,
           },
         ]}
       >
-        {USE_REAL_BLUR ? (
-          <BlurView
-            intensity={BLUR_INTENSITY[intensity]}
-            tint={palette.blurTint}
-            style={StyleSheet.absoluteFill}
-          />
-        ) : null}
-
-        {/* Body fill. */}
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: fill }]} />
-
-        {/* Accent wash for selected/active cards. */}
-        {tint ? (
-          <LinearGradient
-            colors={[withAlpha(tint, isDark ? 0.22 : 0.16), withAlpha(tint, 0)]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        ) : null}
-
-        {/* Inner glow — brighter at the top, as if lit from above. */}
+        {/* Material sheen: brighter at the top, as if lit from above. */}
         <LinearGradient
           colors={[
-            withAlpha('#FFFFFF', isDark ? 0.1 : 0.5),
+            withAlpha('#FFFFFF', isDark ? 0.055 : 0.6),
             withAlpha('#FFFFFF', 0),
-            withAlpha('#000000', isDark ? 0.06 : 0),
+            withAlpha('#000000', isDark ? 0.1 : 0.03),
           ]}
-          locations={[0, 0.55, 1]}
+          locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
 
-        {/* The lit edge. 1px, and worth every pixel. */}
+        {/* Body fill. */}
         <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: fill }]}
           pointerEvents="none"
-          style={[styles.topHighlight, { backgroundColor: palette.glassHighlight }]}
         />
+
+        {/* Accent wash for selected/active surfaces. */}
+        {tint ? (
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(tint, isDark ? 0.12 : 0.1) }]}
+          />
+        ) : null}
+
+        {/* The bevel pair. Two hairlines, and the whole effect rests on them. */}
+        <View pointerEvents="none" style={[styles.bevelTop, { backgroundColor: topBevel }]} />
+        <View pointerEvents="none" style={[styles.bevelBottom, { backgroundColor: bottomBevel }]} />
 
         <View style={{ padding }}>{children}</View>
       </View>
@@ -133,15 +125,25 @@ function GlassCardInner({
 
 export const GlassCard = memo(GlassCardInner);
 
+/** Explicit alias — new code should prefer this name. */
+export const Surface = GlassCard;
+
 const styles = StyleSheet.create({
   clip: {
     overflow: 'hidden',
   },
-  topHighlight: {
+  bevelTop: {
     position: 'absolute',
     top: 0,
-    left: 12,
-    right: 12,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth * 2,
+  },
+  bevelBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     height: StyleSheet.hairlineWidth * 2,
   },
 });
