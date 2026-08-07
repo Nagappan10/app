@@ -352,7 +352,7 @@ function Field({
           style={[
             type.body,
             styles.input,
-            { color: palette.text, backgroundColor: withAlpha(palette.text, 0.06) },
+            { color: palette.text, backgroundColor: palette.surfaceSunken, borderWidth: 1, borderTopColor: palette.edgeDark, borderLeftColor: palette.edgeDark, borderBottomColor: palette.edgeLight, borderRightColor: palette.edgeLight },
           ]}
         />
         {suffix ? (

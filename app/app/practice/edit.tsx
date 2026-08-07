@@ -54,6 +54,7 @@ export default function EditActivityScreen() {
       <Screen
         title={existing ? 'Edit activity' : 'New activity'}
         accent="practice"
+        hideThemeToggle
         headerRight={
           <PressableScale onPress={router.back} haptic="select" accessibilityLabel="Cancel">
             <View style={[styles.close, { backgroundColor: withAlpha(palette.text, 0.08) }]}>
@@ -92,7 +93,7 @@ export default function EditActivityScreen() {
               style={[
                 type.body,
                 styles.input,
-                { color: palette.text, backgroundColor: withAlpha(palette.text, 0.06) },
+                { color: palette.text, backgroundColor: palette.surfaceSunken, borderWidth: 1, borderTopColor: palette.edgeDark, borderLeftColor: palette.edgeDark, borderBottomColor: palette.edgeLight, borderRightColor: palette.edgeLight },
               ]}
             />
           </GlassCard>
@@ -149,7 +150,7 @@ export default function EditActivityScreen() {
                 type.body,
                 styles.input,
                 styles.inputSpaced,
-                { color: palette.text, backgroundColor: withAlpha(palette.text, 0.06) },
+                { color: palette.text, backgroundColor: palette.surfaceSunken, borderWidth: 1, borderTopColor: palette.edgeDark, borderLeftColor: palette.edgeDark, borderBottomColor: palette.edgeLight, borderRightColor: palette.edgeLight },
               ]}
             />
           </GlassCard>

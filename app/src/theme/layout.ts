@@ -34,22 +34,23 @@ export const hitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
  */
 export function shadow(palette: Palette, level: 'sm' | 'md' | 'lg' | 'xl'): ViewStyle {
   const isDark = palette.scheme === 'dark';
-  const opacity = { sm: 0.16, md: 0.22, lg: 0.28, xl: 0.36 }[level];
-  const radiusFor = { sm: 6, md: 12, lg: 20, xl: 28 }[level];
-  const offset = { sm: 1, md: 3, lg: 6, xl: 10 }[level];
 
-  // Android renders `elevation` as a real-time shadow pass, and does it per
-  // view. On a rounded, clipped surface that pass is expensive, and with
-  // dozens of cards on screen it was a measurable share of the frame budget.
-  // Depth here comes from the bevel hairlines instead, so elevation only needs
-  // to separate a surface from its neighbour — small values are plenty.
-  const elevation = { sm: 0, md: 1, lg: 3, xl: 6 }[level];
+  // Soft-UI shadows are wide, faint and offset down-right, complementing the
+  // light top-left border rather than competing with it. They are a supporting
+  // cue here: the per-side edges do the real work, so these stay subtle.
+  const opacity = { sm: 0.10, md: 0.16, lg: 0.22, xl: 0.28 }[level];
+  const radiusFor = { sm: 6, md: 12, lg: 20, xl: 28 }[level];
+  const offset = { sm: 2, md: 4, lg: 8, xl: 12 }[level];
+
+  // Android renders `elevation` as a per-view shadow pass, costly on rounded
+  // clipped surfaces and applied dozens of times per screen. Kept minimal.
+  const elevation = { sm: 0, md: 1, lg: 2, xl: 4 }[level];
 
   return {
     shadowColor: palette.shadow,
-    shadowOpacity: isDark ? opacity : opacity * 0.5,
+    shadowOpacity: isDark ? opacity * 1.5 : opacity,
     shadowRadius: radiusFor,
-    shadowOffset: { width: 0, height: offset },
+    shadowOffset: { width: offset * 0.5, height: offset },
     elevation,
   };
 }

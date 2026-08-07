@@ -5,30 +5,28 @@ import Animated from 'react-native-reanimated';
 import { radius as radii, shadow, spacing, usePalette, withAlpha } from '@/theme';
 
 /**
- * The raised surface the whole app is built from.
+ * The soft-UI surface everything is built from.
  *
- * Skeuomorphic where it counts, minimal everywhere else. Depth comes from how
- * light actually falls on a raised object rather than from ornament:
+ * A neumorphic control is the same colour as its background — it is not a
+ * filled box, it is the ground itself pushed up or pressed in. The whole
+ * effect therefore lives in the edges:
  *
- *   1. a very slight vertical gradient — the sheen across a physical face
- *   2. a 1px light hairline along the TOP edge — the lit bevel
- *   3. a 1px dark hairline along the BOTTOM edge — the shaded underside
- *   4. a hairline border holding the silhouette
+ *     top + left   light   (facing the light source)
+ *     bottom + right dark  (falling away from it)
  *
- * Those two opposing hairlines are the entire trick. Relief reads as relief
- * because the eye expects light from above, so a bright top edge and a dark
- * bottom edge is enough — no drop shadows, no blur, no bevel textures.
+ * Invert that pair and the identical element reads as pressed into the
+ * surface, which is how `sunken` renders inputs, tracks and unfilled cells.
  *
- * It is also dramatically cheaper than the frosted-glass version this replaces.
- * That build mounted a BlurView per card plus several full-bleed overlays;
- * with dozens of cards on a screen, Android spent its frame budget compositing
- * blur passes that it was not even rendering as blur. Here a card is a handful
- * of plain views and one small gradient, so the same visual weight costs a
- * fraction of the work — which is why the redesign and the smoothness fix are
- * the same change.
+ * Why edges rather than shadows: real neumorphism uses two offset shadows, one
+ * light and one dark. React Native allows a single shadow per view, and
+ * Android's `elevation` shadow is always dark and cannot be tinted or offset
+ * diagonally — so two-sided shadows are simply not available. Per-side border
+ * colours give the eye the same cue, work identically on both platforms, and
+ * cost nothing to composite. A faint diagonal gradient across the face adds
+ * the curvature that sells it.
  *
- * The component keeps its original name and props so every existing caller
- * compiles untouched.
+ * The component keeps its original name and props so all existing callers
+ * compile untouched; `Surface` is the preferred name for new code.
  */
 
 export type GlassIntensity = 'light' | 'regular' | 'strong';
@@ -36,15 +34,14 @@ export type GlassIntensity = 'light' | 'regular' | 'strong';
 export interface GlassCardProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** Inner padding. Pass 0 for edge-to-edge content such as charts. */
   padding?: number;
   borderRadius?: number;
   intensity?: GlassIntensity;
   elevation?: 'sm' | 'md' | 'lg' | 'xl';
-  /** Tints the whole surface toward an accent — used for active states. */
+  /** Small accent wash — used sparingly, per the minimalist half of the brief. */
   tint?: string;
   animatedStyle?: StyleProp<ViewStyle>;
-  /** Recessed rather than raised: bevels invert, as for a well or a track. */
+  /** Pressed into the surface rather than raised out of it. */
   sunken?: boolean;
 }
 
@@ -62,60 +59,60 @@ function GlassCardInner({
   const palette = usePalette();
   const isDark = palette.scheme === 'dark';
 
-  const fill =
-    intensity === 'strong'
+  const face = sunken
+    ? palette.surfaceSunken
+    : intensity === 'strong'
       ? palette.surfaceRaised
-      : intensity === 'light'
-        ? palette.surface
-        : palette.surface;
+      : palette.surface;
 
-  // Sunken surfaces are lit from the opposite side: dark along the top lip,
-  // light along the bottom, which is what a recess looks like.
-  const topBevel = sunken ? palette.bevelDark : palette.bevelLight;
-  const bottomBevel = sunken ? palette.bevelLight : palette.bevelDark;
+  // Raised: lit from the top-left. Sunken: the lighting flips.
+  const topLeft = sunken ? palette.edgeDark : palette.edgeLight;
+  const bottomRight = sunken ? palette.edgeLight : palette.edgeDark;
 
   return (
-    <Animated.View style={[shadow(palette, elevation), { borderRadius }, animatedStyle, style]}>
+    <Animated.View
+      style={[sunken ? null : shadow(palette, elevation), { borderRadius }, animatedStyle, style]}
+    >
       <View
         style={[
           styles.clip,
           {
             borderRadius,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: palette.border,
-            backgroundColor: sunken ? palette.surfaceSunken : palette.backgroundElevated,
+            backgroundColor: face,
+            borderTopWidth: 1,
+            borderLeftWidth: 1,
+            borderBottomWidth: 1,
+            borderRightWidth: 1,
+            borderTopColor: topLeft,
+            borderLeftColor: topLeft,
+            borderBottomColor: bottomRight,
+            borderRightColor: bottomRight,
           },
         ]}
       >
-        {/* Material sheen: brighter at the top, as if lit from above. */}
+        {/* Curvature: brighter at the top-left, falling away to the bottom-right. */}
         <LinearGradient
           colors={[
-            withAlpha('#FFFFFF', isDark ? 0.055 : 0.6),
-            withAlpha('#FFFFFF', 0),
-            withAlpha('#000000', isDark ? 0.1 : 0.03),
+            withAlpha(isDark ? '#FFFFFF' : '#FFFFFF', sunken ? 0 : isDark ? 0.035 : 0.5),
+            'transparent',
+            withAlpha('#000000', sunken ? (isDark ? 0.18 : 0.05) : isDark ? 0.1 : 0.035),
           ]}
           locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
 
-        {/* Body fill. */}
-        <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: fill }]}
-          pointerEvents="none"
-        />
-
-        {/* Accent wash for selected/active surfaces. */}
         {tint ? (
           <View
             pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { backgroundColor: withAlpha(tint, isDark ? 0.12 : 0.1) }]}
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: withAlpha(tint, isDark ? 0.1 : 0.09) },
+            ]}
           />
         ) : null}
-
-        {/* The bevel pair. Two hairlines, and the whole effect rests on them. */}
-        <View pointerEvents="none" style={[styles.bevelTop, { backgroundColor: topBevel }]} />
-        <View pointerEvents="none" style={[styles.bevelBottom, { backgroundColor: bottomBevel }]} />
 
         <View style={{ padding }}>{children}</View>
       </View>
@@ -125,25 +122,11 @@ function GlassCardInner({
 
 export const GlassCard = memo(GlassCardInner);
 
-/** Explicit alias — new code should prefer this name. */
+/** Preferred name for new code. */
 export const Surface = GlassCard;
 
 const styles = StyleSheet.create({
   clip: {
     overflow: 'hidden',
-  },
-  bevelTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth * 2,
-  },
-  bevelBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: StyleSheet.hairlineWidth * 2,
   },
 });

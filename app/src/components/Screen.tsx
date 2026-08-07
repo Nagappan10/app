@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PullIndicator, PULL_THRESHOLD } from './PullIndicator';
+import { ThemeToggle } from './ThemeToggle';
 import { USE_REAL_BLUR } from '@/theme/perf';
 import { haptics } from '@/services/haptics';
 import {
@@ -31,6 +32,8 @@ export interface ScreenProps {
   /** Rendered on the trailing side of the large title row. */
   headerRight?: ReactNode;
   contentPaddingTop?: number;
+  /** Screens presented as modals hide the toggle; it belongs on top level. */
+  hideThemeToggle?: boolean;
 }
 
 const HEADER_MAX = 108;
@@ -59,6 +62,7 @@ export function Screen({
   onRefresh,
   headerRight,
   contentPaddingTop = 0,
+  hideThemeToggle = false,
 }: ScreenProps) {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
@@ -193,6 +197,7 @@ export function Screen({
             <Text style={[type.largeTitle, { color: palette.text }]}>{title}</Text>
           </View>
           {headerRight}
+          {hideThemeToggle ? null : <ThemeToggle />}
         </Animated.View>
 
         <View style={{ paddingTop: contentPaddingTop, gap: spacing.base }}>{children}</View>

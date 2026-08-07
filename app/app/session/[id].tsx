@@ -82,6 +82,7 @@ export default function SessionDetailScreen() {
       title={friendlyDate(session.day)}
       subtitle="Walking session"
       accent="walk"
+      hideThemeToggle
       headerRight={<CloseButton onPress={router.back} />}
     >
       <SharedHero origin={origin}>

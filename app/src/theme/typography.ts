@@ -18,6 +18,22 @@ export const fontFamily = Platform.select({
   default: 'System',
 });
 
+/**
+ * Editorial serif for display type — the second half of the brief.
+ *
+ * The reference sets its headings in a broadsheet serif against a lot of
+ * whitespace, which is what gives minimalism its authority; a sans-serif
+ * heading at the same size just reads as "app". Bundling a webfont would add
+ * megabytes to the APK for a handful of headings, so this uses the serif each
+ * platform already ships. Body copy, labels and every number stay sans —
+ * a serif digit in a stat row is harder to scan, which defeats the point.
+ */
+export const displayFamily = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'Georgia',
+});
+
 const monoFamily = Platform.select({
   ios: 'Menlo',
   android: 'monospace',
@@ -52,16 +68,16 @@ export const type = {
 
   /** 34pt — screen titles at rest. */
   largeTitle: {
-    fontFamily,
+    fontFamily: displayFamily,
     fontSize: 34,
     lineHeight: 41,
     fontWeight: '700',
     letterSpacing: -0.8,
   },
 
-  title1: { fontFamily, fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.5 },
-  title2: { fontFamily, fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.4 },
-  title3: { fontFamily, fontSize: 20, lineHeight: 25, fontWeight: '600', letterSpacing: -0.3 },
+  title1: { fontFamily: displayFamily, fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.5 },
+  title2: { fontFamily: displayFamily, fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.4 },
+  title3: { fontFamily: displayFamily, fontSize: 20, lineHeight: 25, fontWeight: '600', letterSpacing: -0.3 },
 
   headline: { fontFamily, fontSize: 17, lineHeight: 22, fontWeight: '600', letterSpacing: -0.2 },
   body: { fontFamily, fontSize: 17, lineHeight: 22, fontWeight: '400', letterSpacing: -0.2 },
