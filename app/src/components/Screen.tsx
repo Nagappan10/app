@@ -131,8 +131,13 @@ export function Screen({
   return (
     <View style={styles.root}>
       {/* Compact blurred bar, revealed as the large title leaves. */}
+      {/* Purely decorative: it shows a title and a background, and holds no
+          controls. It must therefore swallow no touches — with `box-none` its
+          absolutely-filled background child still captured them, and because
+          the bar overlaps the title row it silently ate every tap on the
+          theme toggle and any headerRight control. */}
       <Animated.View
-        pointerEvents="box-none"
+        pointerEvents="none"
         style={[
           styles.compactBar,
           { height: insets.top + HEADER_MIN, paddingTop: insets.top },

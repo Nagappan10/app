@@ -137,10 +137,18 @@ export function GhostButton({
 
   return (
     <PressableScale onPress={onPress} haptic="select" style={style} accessibilityLabel={label}>
+      {/* A raised key: lit along the top-left, shaded along the bottom-right,
+          exactly like the surfaces it sits among. */}
       <View
         style={[
           styles.ghostButton,
-          { backgroundColor: withAlpha(color, 0.12), borderColor: withAlpha(color, 0.18) },
+          {
+            backgroundColor: palette.surfaceRaised,
+            borderTopColor: palette.edgeLight,
+            borderLeftColor: palette.edgeLight,
+            borderBottomColor: palette.edgeDark,
+            borderRightColor: palette.edgeDark,
+          },
         ]}
       >
         {icon ? <Ionicons name={icon} size={17} color={color} /> : null}
@@ -256,7 +264,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.5,
   },
   empty: {
     alignItems: 'center',

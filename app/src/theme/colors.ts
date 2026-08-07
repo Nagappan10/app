@@ -14,11 +14,14 @@
  *      active toggle, the progress arc, a completed day. Restraint is the
  *      minimalist half of the brief.
  *
- * `edgeLight` and `edgeDark` are the whole mechanism. React Native allows only
- * one shadow per view and Android's elevation shadow is always dark, so true
- * two-sided neumorphic shadows are impossible with shadows alone. Instead each
- * surface takes a light border along its top and left and a dark one along its
- * bottom and right — the same cue the eye reads, at a fraction of the cost.
+ * `edgeLight` and `edgeDark` drive everything. Soft UI needs light from two
+ * sides — a white glow up-and-left, a dark one down-and-right. React Native
+ * allows one shadow per view, so iOS stacks two views to cast both. Android's
+ * `elevation` is its only shadow and is always dark, so there the same read is
+ * built from a thicker two-tone border over a diagonal face gradient.
+ *
+ * The gap between these two values IS the sense of depth: too narrow and every
+ * surface looks flat and printed on. They are deliberately far apart.
  */
 
 export interface Palette {
@@ -85,21 +88,21 @@ export const lightPalette: Palette = {
 
   // The classic soft-UI ground: light, very slightly cool, never pure white —
   // pure white leaves no room for a lighter edge to read against.
-  background: '#E9EBEF',
-  backgroundElevated: '#E9EBEF',
+  background: '#E4E8EF',
+  backgroundElevated: '#E4E8EF',
 
-  surface: '#E9EBEF',
-  surfaceRaised: '#EDEFF3',
-  surfaceSunken: '#DFE2E8',
+  surface: '#E4E8EF',
+  surfaceRaised: '#EAEDF3',
+  surfaceSunken: '#D6DAE3',
 
   edgeLight: '#FFFFFF',
-  edgeDark: '#C2C7D2',
+  edgeDark: '#A9B2C4',
 
   bevelLight: '#FFFFFF',
-  bevelDark: '#C2C7D2',
+  bevelDark: '#A9B2C4',
   border: 'rgba(120,130,150,0.16)',
-  glass: '#E9EBEF',
-  glassStrong: '#EDEFF3',
+  glass: '#E4E8EF',
+  glassStrong: '#EAEDF3',
   glassHighlight: '#FFFFFF',
   glassBorder: 'rgba(120,130,150,0.16)',
 
@@ -119,10 +122,10 @@ export const lightPalette: Palette = {
   warning: ACCENT.amber,
   flame: ACCENT.ember,
 
-  mesh: ['#E9EBEF', '#E9EBEF', '#E9EBEF'],
+  mesh: ['#E4E8EF', '#E4E8EF', '#E4E8EF'],
 
   blurTint: 'light',
-  shadow: '#9AA2B4',
+  shadow: '#8C97AD',
 };
 
 export const darkPalette: Palette = {
@@ -130,21 +133,21 @@ export const darkPalette: Palette = {
 
   // Dark soft-UI needs a slate, not black: an unlit edge has to be darker than
   // the surface, and nothing is darker than black.
-  background: '#24262C',
-  backgroundElevated: '#24262C',
+  background: '#262931',
+  backgroundElevated: '#262931',
 
-  surface: '#24262C',
-  surfaceRaised: '#292C33',
-  surfaceSunken: '#1D1F24',
+  surface: '#262931',
+  surfaceRaised: '#2D313A',
+  surfaceSunken: '#1B1D23',
 
-  edgeLight: '#33363F',
-  edgeDark: '#15171B',
+  edgeLight: '#3C414D',
+  edgeDark: '#101216',
 
-  bevelLight: '#33363F',
-  bevelDark: '#15171B',
+  bevelLight: '#3C414D',
+  bevelDark: '#101216',
   border: 'rgba(255,255,255,0.06)',
-  glass: '#24262C',
-  glassStrong: '#292C33',
+  glass: '#262931',
+  glassStrong: '#2D313A',
   glassHighlight: '#33363F',
   glassBorder: 'rgba(255,255,255,0.06)',
 
@@ -164,7 +167,7 @@ export const darkPalette: Palette = {
   warning: ACCENT.amber,
   flame: ACCENT.ember,
 
-  mesh: ['#24262C', '#24262C', '#24262C'],
+  mesh: ['#262931', '#262931', '#262931'],
 
   blurTint: 'dark',
   shadow: '#000000',
